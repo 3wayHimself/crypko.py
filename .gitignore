@@ -1,0 +1,6 @@
+*.key
+dist/
+build/
+*.egg-info/
+cache.json
+__pycache__/

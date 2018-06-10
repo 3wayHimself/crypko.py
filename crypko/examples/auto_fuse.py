@@ -101,7 +101,7 @@ def purge_attributes(api, attribs):
     print(f'==> Flushing {len(txs)} transactions')
     for tx in txs:
         print(f' ::  TX {tx.hex()}')
-        api.contract.web3.eth.wait_for_tx(tx)
+        api.contract.wait_for_tx(tx)
     print(f'==> Done!')
 
 

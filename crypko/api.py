@@ -23,9 +23,9 @@ import math
 
 import requests
 
+from .errors import CrypkoApiError, CrypkoNotFoundError
 from .blockchain import ContractHandler
-from .objects import CrypkoAttributes, CrypkoOwner, CrypkoDetails, Crypko
-from .errors import CrypkoApiError
+from .objects import Crypko
 
 
 class API:
@@ -58,6 +58,16 @@ class API:
             raise CrypkoApiError('Contract not loaded. Did you provide an address and key?')
         return self._contract
 
+    def get_crypko(self, crypko_id):
+        res = requests.get('{}crypkos/{}/detail'.format(self.DOMAIN, crypko_id))
+
+        if res.status_code == 404:
+            raise CrypkoNotFoundError
+        if res.status_code != 200:
+            raise CrypkoApiError('Got response code {}. ({})'.format(res.status_code, res.text))
+
+        return Crypko(res.json(), self)
+
     def threaded_search(self, callback, threads=8, start=0, results=-1, **kwargs):
         if results == 0:
             return
@@ -78,7 +88,8 @@ class API:
                 page += 1
                 res = self._search(page=me_page, **kwargs)
 
-                if not res['crypkos']: break
+                if not res['crypkos']:
+                    break
                 
                 for n, i in enumerate(res['crypkos']):
                     if n + (page - 1) * self.PER_PAGE >= start:
@@ -89,12 +100,13 @@ class API:
         for _ in range(threads):
             pool.append(threading.Thread(target=runner))
             pool[-1].start()
-        for i in pool:
-            i.join()
+
+        for thread in pool:
+            thread.join()
 
     def search(self, start=0, results=-1, **kwargs):
         """
-        Search for Crypkos. Will retrive `results` Crypkos starting at `start`.
+        Search for Crypkos. Will retrieve `results` Crypkos starting at `start`.
         If results is negative, we will read until the end of results.
 
         TODO: Document kwargs
@@ -127,4 +139,3 @@ class API:
                     result = self._search(page=page, **kwargs)
         
         return result['totalMatched'], iters()
-

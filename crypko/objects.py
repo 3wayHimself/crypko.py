@@ -21,91 +21,164 @@
 import requests
 import hashlib
 
+from .errors import CrypkoApiError
 
 IMAGE_CODE = 'asdasd3edwasd'
+
+ATTR_MAP = {'hair': ['blonde hair', 'brown hair', 'black hair', 'blue hair', 'pink hair', 'purple hair', 'green hair',
+                     'red hair', 'silver hair', 'white hair', 'orange hair', 'aqua hair', 'grey hair'],
+            'eyes': ['blue eyes', 'red eyes', 'brown eyes', 'green eyes', 'purple eyes', 'yellow eyes', 'pink eyes',
+                     'aqua eyes', 'black eyes', 'orange eyes'],
+            'hair_style': ['long hair', 'short hair', 'twintails', 'drill hair', 'ponytail'],
+            'attribute': ['dark skin', 'blush', 'smile', 'open mouth', 'hat', 'ribbon', 'glasses']}
 
 
 class CrypkoAttributes:
     def __init__(self, attr_string):
-        self._attrs = int(attr_string)
+        self.attribute_int = int(attr_string)
+
+    @property
+    def attributes(self):
+        attrs = bin(self.attribute_int)[2:].rjust(38, '0')
+
+        rtn = [
+            (ATTR_MAP['hair'][int(attrs[30: 34], 2) % len(ATTR_MAP['hair'])], True),
+            (ATTR_MAP['eyes'][int(attrs[22: 26], 2) % len(ATTR_MAP['eyes'])], True),
+            (ATTR_MAP['hair_style'][int(attrs[14: 18], 2) % len(ATTR_MAP['hair_style'])], True)
+        ]
+
+        for n, i in enumerate(ATTR_MAP['attribute'][::-1]):
+            rtn.append(
+                (i, bool(int(attrs[n * 2])))
+            )
+
+        return rtn
+
+    @property
+    def sub_attributes(self):
+        attrs = bin(self.attribute_int)[2:].rjust(38, '0')
+
+        rtn = [
+            (ATTR_MAP['hair'][int(attrs[34: 38], 2) % len(ATTR_MAP['hair'])], True),
+            (ATTR_MAP['eyes'][int(attrs[26: 30], 2) % len(ATTR_MAP['eyes'])], True),
+            (ATTR_MAP['hair_style'][int(attrs[18: 22], 2) % len(ATTR_MAP['hair_style'])], True)
+        ]
+
+        for n, i in enumerate(ATTR_MAP['attribute'][::-1]):
+            rtn.append(
+                (i, bool(int(attrs[n * 2 + 1])))
+            )
+
+        return rtn
 
 
 class CrypkoOwner:
     def __init__(self, data):
-        self.username = data.get('username')
-        self.avatar = data.get('avatar')
-        self.address = data.get('address')
         self.avatar_dat = data.get('avatarCrypko')
+        self.username = data.get('username')
+        self.address = data.get('address')
+        self.avatar = data.get('avatar')
         self.bio = data.get('introduction')
 
 
-class CrypkoDetails:
-    def __init__(self, data, api):
-        self.blush = data.pop('blush', False)
-        self.dark_skin = data.pop('darkSkin', False)
-        self.derivatives = data.pop('derivatives', [])
-        self.hair_colour = data.pop('hairColor', '')[:-5]  # Strip " hair"
-        self.hair_style = data.pop('hairStyle', '')
-        self.hat = data.pop('hat', False)
-        self.open_mouth = data.pop('openMouth', False)
-        self.ribbon = data.pop('ribbon', False)
-        self.smile = data.pop('smile', False)
-        self.glasses = data.pop('glasses', False)
+class CrypkoAuction:
+    SALE = 0
+    RENTAL = 1
 
-        self.updated_block_num = data.pop('updatedBlockNum', '')
+    def __init__(self, start_price, end_price, duration, started, ends, sale, rental):
+        self.start_price = start_price
+        self.end_price = end_price
+        self.duration = duration
+        self.started = started
+        self.ends = ends
 
-        self.last_liked = data.pop('lastLiked', '')  # TODO: datetime
+        self.active = sale or rental
 
-        self.sire = self.matron = None
-        if 'sire' in data:
-            self.sire = Crypko(data.pop('sire'), api)
-        if 'matron' in data:
-            self.matron = Crypko(data.pop('matron'), api)
-
-        self.owner = CrypkoOwner(data.pop('owner'))
-
-        self.bio = data.pop('bio', None)
-
-        for i in ['id', 'attrs', 'cooldownIndex', 'eyeColor', 'iteration', 'likeCount',
-                  'matronId', 'nextActionAt', 'noise', 'onRentalClockAuction',
-                  'onSaleClockAuction', 'ownerAddr', 'cooldownRemain', 'sireId',
-                  'name']:
-            data.pop(i, None)
-
-        # TODO: Handle these
-        for i in ['deltaPriceDouble', 'duration', 'endAt', 'endingPrice', 'startedAt',
-                  'startingPrice', 'startingPriceDouble']:
-            data.pop(i, None)
-
-        if data:
-            print('[WARNING] Details has extra stuff: {}'.format(data))
+        self.type = self.SALE if sale else self.RENTAL if rental else None
 
 
 class Crypko:
     def __init__(self, data, api):
         self._api = api
 
-        self._details = None
+        self.sire = self.matron = self.owner = None
 
+        self.complete = False
+
+        self._load_details(data)
+
+    def _load_details(self, data):
         self.id = data.pop('id')
-        self.attrs = CrypkoAttributes(data.pop('attrs', 0))
 
+        # Attribute parsing
+        attrs = CrypkoAttributes(data.pop('attrs', 0))
+        self.sub_attributes = attrs.sub_attributes
+        self.attributes_int = attrs.attribute_int
+        self.attributes = attrs.attributes
+
+        # Load auction details
+        start_price = int(data.pop('startingPrice', 0))
+        end_price = int(data.pop('endingPrice', 0))
+        duration = int(data.pop('duration', 0))
+        started = int(data.pop('startedAt', 0))
+        ends = int(data.pop('endAt', 0))
+
+        on_sale = data.pop('onSaleClockAuction', False)
+        on_rental = data.pop('onRentalClockAuction', False)
+
+        self.auction = CrypkoAuction(start_price, end_price, duration, started, ends, on_sale, on_rental)
+
+        # Metadata
+        self.derivatives = data.pop('derivatives', [])
         self.likes = data.pop('likeCount', 0)
-        self.noise = data.pop('noise', '')
-        self.on_sale = data.pop('onSaleClockAuction', False)
-        self.cooldown = data.get('cooldownRemain', 0) < 0
-        self.duration = int(data.pop('duration', 0))
-        self.end_price = int(data.pop('endingPrice', 0))
+        self.raw_noise = int(data.pop('noise', 0))
+
         self.iteration = data.pop('iteration', 0)
-        self.on_rental = data.pop('onRentalClockAuction', False)
-        self.eye_colour = data.pop('eyeColor', '')[:-5]  # Strip the " eyes"
-        self.start_time = int(data.pop('startedAt', 0))
-        self.start_price = int(data.pop('startingPrice', 0))
+
         self.cooldown_left = data.pop('cooldownRemain', 0)
         self.cooldown_index = data.pop('cooldownIndex')
+
+        if 'owner' in data:
+            self.owner = CrypkoOwner(data.pop('owner'))
+            data.pop('ownerAddr', None)
+        elif 'ownerAddr' in data:
+            self.owner = CrypkoOwner({'address': data.pop('ownerAddr')})
+
+        self.bio = data.pop('bio', None)
+        self.name = data.pop('name', None)
+
         self.next_action_at = data.pop('nextActionAt', 0)
 
-        self.name = data.pop('name', None)
+        # Visual attributes
+        # # Features
+        self.hair_colour = data.pop('hairColor', '')[:-5] or None
+        self.eye_colour = data.pop('eyeColor', '')[:-5] or None
+        self.hair_style = data.pop('hairStyle', None)
+        self.open_mouth = data.pop('openMouth', None)
+        self.dark_skin = data.pop('darkSkin', None)
+        self.blush = data.pop('blush', None)
+        # # Objects
+        self.glasses = data.pop('glasses', None)
+        self.ribbon = data.pop('ribbon', None)
+        self.smile = data.pop('smile', None)
+        self.hat = data.pop('hat', None)
+
+        self.updated_block_num = data.pop('updatedBlockNum', '')
+
+        self.last_liked = data.pop('lastLiked', '')  # TODO: datetime
+
+        # Genetics
+        if 'sire' in data:
+            self.sire = Crypko(data.pop('sire'), self._api)
+            data.pop('sireId', None)
+        elif 'sireId' in data:
+            self.sire = Crypko({'id': data.pop('sireId')}, self._api)
+
+        if 'matron' in data:
+            self.matron = Crypko(data.pop('matron'), self._api)
+            data.pop('matronId', None)
+        elif 'matronId' in data:
+            self.matron = Crypko({'id': data.pop('matronId')}, self._api)
 
         if data:
             print('[WARNING] Unhandled Crypko data: {}'.format(data))
@@ -114,32 +187,41 @@ class Crypko:
         rtn = 'Crypko #{}'.format(self.id)
         if self.name is not None:
             rtn += ' (' + self.name + ')'
-        if self.on_sale:
-            rtn += ' SALE'
-        if self.on_rental:
-            rtn += ' RENTAL'
-        
+        if self.auction.active:
+            if self.auction.type == CrypkoAuction.SALE:
+                rtn += ' (on sale)'
+            else:
+                rtn += ' (for rent)'
+
         return rtn
 
+    def __eq__(self, other):
+        return other.id == self.id
+
     @property
-    def details(self):
-        if self._details is None:
-            res = requests.get('{}crypkos/{}/detail'.format(self._api.DOMAIN, self.id))
+    def noise(self):
+        noise = bin(self.raw_noise)[2:].rjust(256, '0')
+        return [int(noise[n - 2: n], 2) for n in range(len(noise), 0, -2)]
 
-            if res.status_code != 200:
-                raise CrypkoApiError('Got response code {}. ({})'.format(res.status_code, res.text))
+    def reload_details(self):
+        res = requests.get('{}crypkos/{}/detail'.format(self._api.DOMAIN, self.id))
 
-            self._details = CrypkoDetails(res.json(), self._api)
+        if res.status_code != 200:
+            raise CrypkoApiError('Got response code {}. ({})'.format(res.status_code, res.text))
 
-        return self._details
+        self._load_details(res.json())
+        self.complete = True
+
+    def ensure_complete(self):
+        if not self.complete:
+            self.reload_details()
 
     @property
     def image(self):
         return 'https://img.crypko.ai/daisy/' + \
-                hashlib.sha1((str(self.noise) + IMAGE_CODE + str(self.attrs._attrs)).encode()).hexdigest() + \
-                '_lg.jpg'
+               hashlib.sha1((str(self.noise) + IMAGE_CODE + str(self.attrs.attribute_int)).encode()).hexdigest() + \
+               '_lg.jpg'
 
     @property
     def image_sm(self):
         return self.image[:-6] + 'sm.jpg'
-

@@ -19,11 +19,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-from .errors import CrypkoApiError
-from .objects import Crypko, CrypkoAttributes, CrypkoOwner, CrypkoDetails
+from .errors import CrypkoError, CrypkoApiError, CrypkoNotFoundError
+from .objects import Crypko, CrypkoAttributes, CrypkoOwner
 
 from .api import API
 
-__version__ = '0.0.4'
+__version__ = '0.0.5b'
 __author__ = 'Bottersnike'
-__all__ = ['__title__', '__version__', '__author__', 'API', 'CrypkoApiError', 'Crypko', 'CrypkoAttributes', 'CrypkoOwner', 'CrypkoDetails']
+__all__ = ['__version__', '__author__', 'API', 'CrypkoError', 'CrypkoApiError', 'CrypkoNotFoundError', 'Crypko',
+           'CrypkoAttributes', 'CrypkoOwner']

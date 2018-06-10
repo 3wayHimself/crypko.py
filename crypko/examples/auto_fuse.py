@@ -6,7 +6,6 @@ import crypko
 
 from requests.adapters import HTTPAdapter
 
-
 ADDR = '0xca39e90cec69838e73cc4f24ec5077dac44b47d6'
 # ITER_WEIGHT = 1/10
 # SIM_THRESHOLD = 12
@@ -16,6 +15,8 @@ USE_CAP = False
 
 ATTRIBS = 'cooldownready'
 FILTERS = None
+
+
 # FILTERS = 'iteration:~3'  # Iter 3 or under only
 # FILTERS = 'cooldown:ur'  # Only ultra rapids
 
@@ -24,10 +25,10 @@ def score(c1, c2):
     if USE_CAP and c1.id > CAP and c2.id > CAP:
         return 0
 
-    if c1.on_sale or c2.on_sale:
+    if c1.auction.active or c2.auction.active:
         return 0
 
-    similarity = bin(c1.attrs._attrs & c2.attrs._attrs).count('1')
+    similarity = bin(c1.attrs.attribute_int & c2.attrs.attribute_int).count('1')
     n_sim = bin(int(c1.noise) & int(c2.noise)).count('1')
 
     # if similarity < SIM_THRESHOLD:
@@ -67,22 +68,24 @@ def best_pair(crypkos, cooldown=False):
 
     for c1 in crypkos:
         if c1.id not in cache:
-            cache[c1.id] = [c1.details.matron.id if c1.details.matron is not None else time.time(),
-                    c1.details.sire.id if c1.details.sire is not None else time.time()]
+            c1.ensure_complete()
+            cache[c1.id] = (c1.matron.id if c1.matron is not None else time.time(),
+                            c1.sire.id if c1.sire is not None else time.time())
             save_cache(cache)
 
         for c2 in crypkos:
             if c2.id not in cache:
-                cache[c2.id] = [c2.details.matron.id if c2.details.matron is not None else time.time(),
-                        c2.details.sire.id if c2.details.sire is not None else time.time()]
+                c2.ensure_complete()
+                cache[c2.id] = (c2.matron.id if c2.matron is not None else time.time(),
+                                c2.sire.id if c2.sire is not None else time.time())
                 save_cache(cache)
 
             if not legal(c1, c2, cache):
                 continue
 
             scores.append((c1, c2, score(c1, c2)))
-    
-    scores.sort(key=lambda x:x[2], reverse=True)
+
+    scores.sort(key=lambda x: x[2], reverse=True)
     if scores:
         return scores[0][0], scores[0][1]
     return None
@@ -90,7 +93,7 @@ def best_pair(crypkos, cooldown=False):
 
 def purge_attributes(api, attribs):
     print(f'==> Collecting crypkos for \'{attribs}\'')
-    crypkos = [i for i in api.search(owner_addr=ADDR, attributes=attribs)[1] if not i.on_sale]
+    crypkos = [i for i in api.search(owner_addr=ADDR, attributes=attribs)[1] if not i.auction.active]
     txs = []
     for crypko in crypkos:
         print(f'==> Selling #{crypko.id}')
@@ -107,18 +110,19 @@ def purge_attributes(api, attribs):
 
 def main():
     with open('priv.key') as key_file:
-        api = crypko.API(ADDR, key_file.read())
+        api = crypko.API(ADDR, key_file.read().strip())
 
-    batch_size = 12
+    batch_size = 24
     while True:
         purge_attributes(api, 'dark skin')
         purge_attributes(api, 'glasses')
 
         print(f'==> Requesting crypkos..')
         my_crypkos = [i for i in api.search(owner_addr=ADDR,
-            attributes=ATTRIBS,
-            filters=FILTERS,
-            results=120)[1] if not i.on_sale]
+                                            attributes=ATTRIBS,
+                                            filters=FILTERS)[1] if not i.auction.active]
+
+        print(f' ::  {len(my_crypkos)} usable')
 
         txs = []
         for _ in range(batch_size):
@@ -144,4 +148,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

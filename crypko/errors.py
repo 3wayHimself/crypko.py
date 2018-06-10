@@ -18,7 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-class CrypkoApiError(BaseException):
+
+class CrypkoError(BaseException):
+    pass
+
+
+class CrypkoApiError(CrypkoError):
     def __init__(self, *args):
         super().__init__(*args)
 
+
+class CrypkoNotFoundError(CrypkoError):
+    pass

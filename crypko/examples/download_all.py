@@ -18,12 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# This example demonstrates how to use the threadded search to rapidly
+# This example demonstrates how to use the threaded search to rapidly
 # download the image for every crypko a user owns. It relies of a directory
-# named out/ exising already.
+# named out/ existing already.
 
 import requests
 import crypko
+
+from requests.adapters import HTTPAdapter
 
 
 THREADS = 16  # The number of seperate threads to run
@@ -47,6 +49,7 @@ def prepare_callback(session):
 
     return callback
 
+
 def main():
     api = crypko.API()
 
@@ -55,7 +58,7 @@ def main():
     session.mount('https://', HTTPAdapter(max_retries=5))
 
     # Perform the search
-    api.threaded_search(callback, threads=THREADS, owner_addr=ADDRESS)
+    api.threaded_search(prepare_callback(session), threads=THREADS, owner_addr=ADDRESS)
 
 
 if __name__ == '__main__':

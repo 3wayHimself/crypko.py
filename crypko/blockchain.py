@@ -97,5 +97,16 @@ class ContractHandler:
 
         return self._send(fwa, fee)
 
+    def cancel(self, crypko):
+        cancel = self.contracts['ClockAuction'].functions.cancelAuction(crypko)
+
+        return self._send(cancel)
+
+    def gift(self, crypko, to):
+        to = Web3.toChecksumAddress(to)
+        gift = self.contracts['CrypkoAuction'].functions.transfer(to, crypko)
+
+        return self._send(gift)
+
     def wait_for_tx(self, tx):
         return self.web3.eth.waitForTransactionReceipt(tx)

@@ -17,8 +17,7 @@ setup(
     author='Bottersnike',
     author_email='bottersnik237@gmail.com',
     description=('A basic wrapper around the Crypko platform.'),
-    long_description=read('README.md'),
-    long_description_content_type='text/markdown',
+    long_description=read('README.rst'),
     license='MIT',
     install_requires=[
         'requests',
@@ -29,7 +28,7 @@ setup(
     project_urls={
         "Bug Tracker": "https://gitlab.com/Bottersnike/crypko.py/issues",
         "Source Code": "https://gitlab.com/Bottersnike/crypko.py",
-    }
+    },
     package_data={
         'crypko': ['abi.json'],
     },

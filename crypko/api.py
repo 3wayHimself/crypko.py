@@ -18,9 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
 import threading
-import hashlib
 import math
 
 import requests
@@ -30,9 +28,6 @@ from .objects import CrypkoAttributes, CrypkoOwner, CrypkoDetails, Crypko
 from .errors import CrypkoApiError
 
 
-IMAGE_CODE = 'asdasd3edwasd'
-
-        
 class API:
     DOMAIN = 'https://api.crypko.ai/'
     PER_PAGE = 12  # Can't change this :(

@@ -18,8 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
 import requests
+import hashlib
+
+
+IMAGE_CODE = 'asdasd3edwasd'
 
 
 class CrypkoAttributes:

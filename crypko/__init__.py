@@ -24,6 +24,6 @@ from .objects import Crypko, CrypkoAttributes, CrypkoOwner, CrypkoDetails
 
 from .api import API
 
-__version__ = '0.0.2b'
+__version__ = '0.0.2c'
 __author__ = 'Bottersnike'
 __all__ = ['__title__', '__version__', '__author__', 'API', 'CrypkoApiError', 'Crypko', 'CrypkoAttributes', 'CrypkoOwner', 'CrypkoDetails']

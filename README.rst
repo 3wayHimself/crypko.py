@@ -36,5 +36,5 @@ Basic usage:
 Examples:
 =========
 
-Examples can be found in `crypko/examples`.
+Examples can be found in ``crypko/examples``.
 

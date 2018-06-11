@@ -95,9 +95,9 @@ def purge_attributes(api, attribs):
     print(f'==> Collecting crypkos for \'{attribs}\'')
     crypkos = [i for i in api.search(owner_addr=ADDR, attributes=attribs)[1] if not i.auction.active]
     txs = []
-    for crypko in crypkos:
-        print(f'==> Selling #{crypko.id}')
-        tx = api.contract.start_auc(crypko.id)
+    for c in crypkos:
+        print(f'==> Selling #{c.id}')
+        tx = c.sell(0.7, 0.4)
         print(f' ::  TX {tx.hex()}')
         txs.append(tx)
 
@@ -133,7 +133,7 @@ def main():
                 break
 
             print(f' ::  Fusing #{pair[0].id} with #{pair[1].id}..')
-            tx = api.contract.fuse(pair[0].id, pair[1].id)
+            tx = pair[0].fuse(pair[1])
             print(f' ::  Transaction {tx.hex()}')
             txs.append(tx)
 

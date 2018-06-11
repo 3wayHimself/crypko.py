@@ -34,8 +34,6 @@ class ContractHandler:
         'ClockAuction': '0xC8cD5cA4f1a91cdb103EC19d3B46a1E42A862025'
     }
 
-    RECEPIENT = '0xfe2149773b3513703e79ad23d05a778a185016ee'
-
     def __init__(self, key, address):
         self.web3 = Web3(HTTPProvider(self.NODE))
         self.web3.middleware_stack.inject(geth_poa_middleware, layer=0)
@@ -76,12 +74,21 @@ class ContractHandler:
 
         return self.web3.eth.sendRawTransaction(tx.rawTransaction)
 
-    def start_auc(self, crypko, start=0.7, end=0.4, duration=172800):
+    def start_auc(self, crypko, start, end, duration):
         start = Web3.toWei(start, 'ether')
         end = Web3.toWei(end, 'ether')
         start, end = int(start), int(end)
 
         create = self.contracts['CrypkoCore'].functions.createSaleAuction(crypko, start, end, duration)
+
+        return self._send(create)
+
+    def start_rental_auc(self, crypko, start, end, duration):
+        start = Web3.toWei(start, 'ether')
+        end = Web3.toWei(end, 'ether')
+        start, end = int(start), int(end)
+
+        create = self.contracts['CrypkoCore'].functions.createRentalAuction(crypko, start, end, duration)
 
         return self._send(create)
 

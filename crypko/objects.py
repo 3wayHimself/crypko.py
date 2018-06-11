@@ -73,12 +73,23 @@ class CrypkoAttributes:
 
 
 class CrypkoOwner:
-    def __init__(self, data):
+    def __init__(self, data, api):
         self.avatar_dat = data.get('avatarCrypko')
         self.username = data.get('username')
         self.address = data.get('address')
         self.avatar = data.get('avatar')
         self.bio = data.get('introduction')
+
+        self._api = api
+
+    def gift_crypko(self, crypko):
+        if hasattr(crypko, 'id'):
+            crypko = crypko.id
+
+        if not isinstance(crypko, int):
+            raise AttributeError('Expected crypko to be an integer. Got {}.'.format(type(crypko)))
+
+        return self._api.contract.gift(crypko, self.address)
 
 
 class CrypkoAuction:
@@ -139,10 +150,10 @@ class Crypko:
         self.cooldown_index = data.pop('cooldownIndex')
 
         if 'owner' in data:
-            self.owner = CrypkoOwner(data.pop('owner'))
+            self.owner = CrypkoOwner(data.pop('owner'), self._api)
             data.pop('ownerAddr', None)
         elif 'ownerAddr' in data:
-            self.owner = CrypkoOwner({'address': data.pop('ownerAddr')})
+            self.owner = CrypkoOwner({'address': data.pop('ownerAddr')}, self._api)
 
         self.bio = data.pop('bio', None)
         self.name = data.pop('name', None)
@@ -198,11 +209,7 @@ class Crypko:
     def __eq__(self, other):
         return other.id == self.id
 
-    @property
-    def noise(self):
-        noise = bin(self.raw_noise)[2:].rjust(256, '0')
-        return [int(noise[n - 2: n], 2) for n in range(len(noise), 0, -2)]
-
+    # API
     def reload_details(self):
         res = requests.get('{}crypkos/{}/detail'.format(self._api.DOMAIN, self.id))
 
@@ -215,6 +222,40 @@ class Crypko:
     def ensure_complete(self):
         if not self.complete:
             self.reload_details()
+
+    # ETH
+    def sell(self, start, end, duration=172800):
+        return self._api.contract.start_auc(self.id, start, end, duration)
+
+    def sell_rental(self, start, end, duration=172800):
+        return self._api.contract.start_rental_auc(self.id, start, end, duration)
+
+    def place_bid(self):
+        return self._api.contract.bid(self.id)
+
+    def fuse(self, with_crypko):
+        if hasattr(with_crypko, 'id'):
+            with_crypko = with_crypko.id
+
+        if not isinstance(with_crypko, int):
+            raise AttributeError('Expected with_crypko to be an integer. Got {}.'.format(type(with_crypko)))
+
+        return self._api.contract.fuse(with_crypko)
+
+    def cancel_auction(self):
+        if not self.auction.active:
+            raise AttributeError('No auction active')
+
+        return self._api.conteact.cancel(self.id)
+
+    def gift(self, to):
+        return self._api.contact.gift(self.id, to)
+
+    # Properties
+    @property
+    def noise(self):
+        noise = bin(self.raw_noise)[2:].rjust(256, '0')
+        return [int(noise[n - 2: n], 2) for n in range(len(noise), 0, -2)]
 
     @property
     def image(self):

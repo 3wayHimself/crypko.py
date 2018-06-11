@@ -28,8 +28,8 @@ def score(c1, c2):
     if c1.auction.active or c2.auction.active:
         return 0
 
-    similarity = bin(c1.attrs.attribute_int & c2.attrs.attribute_int).count('1')
-    n_sim = bin(int(c1.noise) & int(c2.noise)).count('1')
+    similarity = bin(c1.attributes_int & c2.attributes_int).count('1')
+    n_sim = bin(int(c1.raw_noise) & int(c2.raw_noise)).count('1')
 
     # if similarity < SIM_THRESHOLD:
     #     return 0

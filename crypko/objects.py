@@ -240,7 +240,7 @@ class Crypko:
         if not isinstance(with_crypko, int):
             raise AttributeError('Expected with_crypko to be an integer. Got {}.'.format(type(with_crypko)))
 
-        return self._api.contract.fuse(with_crypko)
+        return self._api.contract.fuse(self.id, with_crypko)
 
     def cancel_auction(self):
         if not self.auction.active:

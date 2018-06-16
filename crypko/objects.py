@@ -52,7 +52,7 @@ class CrypkoAttributes:
                 (i, bool(int(attrs[n * 2])))
             )
 
-        return rtn
+        return set(rtn)
 
     @property
     def sub_attributes(self):
@@ -260,7 +260,7 @@ class Crypko:
     @property
     def image(self):
         return 'https://img.crypko.ai/daisy/' + \
-               hashlib.sha1((str(self.noise) + IMAGE_CODE + str(self.attrs.attribute_int)).encode()).hexdigest() + \
+               hashlib.sha1((str(self.raw_noise) + IMAGE_CODE + str(self.attributes_int)).encode()).hexdigest() + \
                '_lg.jpg'
 
     @property

@@ -42,6 +42,7 @@ def prepare_callback(session):
         r = session.get(cryp.image, stream=True)
 
         # Download and save the image
+        print(cryp.image)
         with open('out/%d.jpg' % cryp.id, 'wb') as file_:
             for chunk in r.iter_content(chunk_size=1024):
                 if chunk:

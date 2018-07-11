@@ -32,11 +32,12 @@ class API:
     DOMAIN = 'https://api.crypko.ai/'
     PER_PAGE = 12  # Can't change this :(
 
-    def __init__(self, address=None, key=None):
+    def __init__(self, address=None, key=None, proxies=None):
         if key is not None and address is not None:
             self._contract = ContractHandler(key, address)
         else:
             self._contract = None
+        self.proxies = proxies
 
     def _search(self, owner_addr=None, page=None, sort=None, category=None, attributes=None, filters=None):
         req = requests.get(self.DOMAIN + 'crypkos/search', params={
@@ -46,7 +47,7 @@ class API:
             'category': category,
             'attributes': attributes,
             'filters': filters
-        })
+        }, proxies=self.proxies)
         if req.status_code != 200:
             raise CrypkoApiError('Got response code {}. ({})'.format(req.status_code, req.text))
 
@@ -59,7 +60,7 @@ class API:
         return self._contract
 
     def get_crypko(self, crypko_id):
-        res = requests.get('{}crypkos/{}/detail'.format(self.DOMAIN, crypko_id))
+        res = requests.get('{}crypkos/{}/detail'.format(self.DOMAIN, crypko_id), proxies=self.proxies)
 
         if res.status_code == 404:
             raise CrypkoNotFoundError

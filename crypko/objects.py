@@ -211,7 +211,7 @@ class Crypko:
 
     # API
     def reload_details(self):
-        res = requests.get('{}crypkos/{}/detail'.format(self._api.DOMAIN, self.id))
+        res = requests.get('{}crypkos/{}/detail'.format(self._api.DOMAIN, self.id), proxies=self._api.proxies)
 
         if res.status_code != 200:
             raise CrypkoApiError('Got response code {}. ({})'.format(res.status_code, res.text))

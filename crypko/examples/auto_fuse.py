@@ -16,6 +16,7 @@ USE_CAP = False
 ATTRIBS = 'cooldownready'
 FILTERS = None
 
+score_cache = {}
 
 # FILTERS = 'iteration:~3'  # Iter 3 or under only
 # FILTERS = 'cooldown:ur'  # Only ultra rapids
@@ -28,13 +29,18 @@ def score(c1, c2):
     if c1.auction.active or c2.auction.active:
         return 0
 
-    similarity = bin(c1.attributes_int & c2.attributes_int).count('1')
-    n_sim = bin(int(c1.raw_noise) & int(c2.raw_noise)).count('1')
+    if (c1.id, c2.id) in score_cache:
+        return score_cache[(c1.id, c2.id)]
+
+    similarity = len((*filter(c1.attributes.__contains__, c2.attributes),))
+
+    n_sim = sum(x == y for x, y in zip(c1.noise, c2.noise))
 
     # if similarity < SIM_THRESHOLD:
     #     return 0
     # return similarity / (max(c1.iteration, c2.iteration) ** ITER_WEIGHT)
 
+    score_cache[(c1.id, c2.id)] = similarity * n_sim
     return similarity * n_sim
 
 
@@ -86,6 +92,7 @@ def best_pair(crypkos, cooldown=False):
             scores.append((c1, c2, score(c1, c2)))
 
     scores.sort(key=lambda x: x[2], reverse=True)
+
     if scores:
         return scores[0][0], scores[0][1]
     return None
@@ -112,7 +119,7 @@ def main():
     with open('priv.key') as key_file:
         api = crypko.API(ADDR, key_file.read().strip())
 
-    batch_size = 24
+    batch_size = 48
     while True:
         purge_attributes(api, 'dark skin')
         purge_attributes(api, 'glasses')
@@ -120,6 +127,7 @@ def main():
         print(f'==> Requesting crypkos..')
         my_crypkos = [i for i in api.search(owner_addr=ADDR,
                                             attributes=ATTRIBS,
+                                            results=12 * 300,
                                             filters=FILTERS)[1] if not i.auction.active]
 
         print(f' ::  {len(my_crypkos)} usable')
@@ -133,12 +141,15 @@ def main():
                 break
 
             print(f' ::  Fusing #{pair[0].id} with #{pair[1].id}..')
-            tx = pair[0].fuse(pair[1])
-            print(f' ::  Transaction {tx.hex()}')
-            txs.append(tx)
+            try:
+                tx = pair[0].fuse(pair[1])
+                print(f' ::  Transaction {tx.hex()}')
+                txs.append(tx)
 
-            my_crypkos.remove(pair[0])
-            my_crypkos.remove(pair[1])
+                my_crypkos.remove(pair[0])
+                my_crypkos.remove(pair[1])
+            except ValueError as e:
+                print(f' ::  Failed with {e}')
         print(f'==> Flushing {len(txs)} transactions')
         for tx in txs:
             print(f' ::  TX {tx.hex()}')
